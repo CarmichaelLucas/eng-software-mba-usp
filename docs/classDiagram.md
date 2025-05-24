@@ -1,9 +1,9 @@
 # Diagrama de Classe
 
-* Dominio central
+* Dominio central  
 ![classDiagram.Base](./assets/classDiagram.Base.png)
 
-* Infraestrutura e Acesso a Dados
+* Infraestrutura e Acesso a Dados  
 ![classDiagram.InfraStructure](./assets/classDiagram.InfraStructure.png)
 
 ## Projeto A
