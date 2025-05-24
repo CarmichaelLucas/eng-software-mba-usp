@@ -1,5 +1,11 @@
 # Diagrama de Caso de Uso
 
-![useCaseDiagram](./assets/useCaseDiagram.png)
+## Projeto A
+* UseCase
+![useCaseDiagram](./assets/useCaseDiagramA.png)
+
+## Projeto B
+* UseCase
+![useCaseDiagram](./assets/useCaseDiagramB.png)
 
 [página principal](../README.md)
