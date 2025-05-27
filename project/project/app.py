@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 
-app = FastAPI()
+from project.controllers import main_router
+
+app = FastAPI(
+    title='Project A', description='API para autenticar e autorizar Usuários'
+)
 
 
-@app.get('/')
-def read_root():
-    return {'message': 'Hello World!'}
+app.include_router(main_router, prefix='/api/v1')
