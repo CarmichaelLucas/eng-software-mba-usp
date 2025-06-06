@@ -1,0 +1,32 @@
+services:
+  todo_db:
+    image: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: docker
+      POSTGRES_DB: todo_api
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+
+  todo_api:
+    image: project/todo
+    entrypoint: ./entrypoint.sh
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3030:3030"
+    volumes:
+      - ${PWD}/:/srv/
+    depends_on:
+      - todo_db
+    environment:
+      DATABASE_URL: postgresql+asyncpg://docker:password@todo_db:5432/todo_api
+      WAIT_FOR_DB: 1
+      DB_HOST: todo_db
+      DB_PORT: 5432
+
+volumes:
+  pgdata:
