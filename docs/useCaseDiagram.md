@@ -1,7 +1,7 @@
 # Diagrama de Caso de Uso
 
 ## Projeto A
-* UseCase
+* UseCase  
 ![useCaseDiagram](./assets/useCaseDiagramA.png)
 
 ## Projeto B
