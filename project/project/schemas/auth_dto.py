@@ -1,12 +1,17 @@
 from pydantic import BaseModel, EmailStr
 
 
-class AuthResponseDTO(BaseModel):
-    access_token: str
-    refresh_token: str
+class AuthPublicResponse(BaseModel):
     token_type: str = 'bearer'
+    access_token: str
+    expire_in: int = None
 
 
-class AuthLoginDTO(BaseModel):
+class AuthPublicRequest(BaseModel):
     email: EmailStr
     password: str
+
+
+class AuthPublicUserResponse(BaseModel):
+    allowed: bool
+    user_uuid: str
