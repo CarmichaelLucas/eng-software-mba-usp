@@ -3,7 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from project.database import get_session
 from project.schemas.user_dto import (
-    UserCreateDTO,
+    UserPublicRequest,
+    UserPublicResponse,
     UserDTO,
 )
 from project.services.user_service import UserService
@@ -13,16 +14,18 @@ router = APIRouter()
 
 @router.post(
     '/users/',
-    response_model=UserDTO,
+    response_model=UserPublicResponse,
     status_code=status.HTTP_201_CREATED,
     description='Criar Usuários',
 )
 async def create(
-    params: UserCreateDTO, session: AsyncSession = Depends(get_session)
+    params: UserPublicRequest,
+    session: AsyncSession = Depends(get_session)
 ):
     try:
+        user = UserDTO(**dict(params))
         service = UserService(session=session)
-        return await service.create(user=params)
+        return await service.create(user=user)
     except (Exception, ValueError) as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
