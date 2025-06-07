@@ -6,6 +6,9 @@ from pydantic_settings import (
 
 class Settings(BaseSettings):
     database_url: str = 'sqlite+aiosqlite:///database.db'
-    secret_key: str = 'segredo_supersecreto'
+    secret_key: str
+    algorithm: str
+    access_token_expire_minutes: int
+    refresh_token_expire_days: int
 
     model_config = SettingsConfigDict(env_file='.env')

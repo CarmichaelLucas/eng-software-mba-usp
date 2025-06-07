@@ -1,10 +1,14 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from project.database import get_session
 from project.schemas.auth_dto import (
-    AuthLoginDTO,
-    AuthResponseDTO,
+    AuthPublicRequest,
+    AuthPublicResponse,
+    AuthPublicUserResponse,
 )
 from project.services.auth_service import AuthService
 
@@ -12,16 +16,40 @@ router = APIRouter()
 
 
 @router.post(
-    '/login',
-    response_model=AuthResponseDTO,
+    '/oauth/login',
+    response_model=AuthPublicResponse,
     status_code=status.HTTP_201_CREATED,
     description='Login Usuários',
 )
 async def login(
-    params: AuthLoginDTO, session: AsyncSession = Depends(get_session)
+    params: Annotated[AuthPublicRequest, Depends()],
+    session: AsyncSession = Depends(get_session)
 ):
     try:
         service = AuthService(session=session)
         return await service.token(data=params)
     except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
+
+
+@router.get(
+    '/oauth/validate-token',
+    response_model=AuthPublicUserResponse,
+    description='Validar TOKEN de acesso',
+)
+async def validate_token(
+    token: Annotated[str, Depends(OAuth2PasswordBearer(tokenUrl="token"))],
+    session: AsyncSession = Depends(get_session)
+):
+    try:
+        service = AuthService(session=session)
+        return await service.validate(token=token)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Credenciais inválida. Realize o login!",
+            headers={"WWW-Authenticate": "Bearer"},
+        )

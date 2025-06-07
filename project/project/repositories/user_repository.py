@@ -1,11 +1,12 @@
 import logging
 from typing import Optional
+from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from project.models.user_model import User
-from project.schemas.user_dto import UserCreateDTO, UserDTO
+from project.schemas.user_dto import UserDTO
 from project.utils.encode_util import EncodeUtil
 
 
@@ -14,18 +15,24 @@ class UserRepository:
         self.session = session
         self.encode = EncodeUtil()
 
-    async def create(self, user: UserCreateDTO) -> UserDTO:
+    async def create(self, user: UserDTO) -> UserDTO:
         try:
             db_user = User(
                 email=user.email,
+                name=user.name,
                 username=user.username,
                 password=self.encode.crypt(user.password),
+                uuid=uuid4(),
             )
             self.session.add(db_user)
             await self.session.commit()
             await self.session.refresh(db_user)
             return UserDTO(
-                id=db_user.id, username=db_user.username, email=db_user.email
+                id=db_user.id,
+                name=db_user.name,
+                username=db_user.username,
+                email=db_user.email,
+                uuid=str(db_user.uuid),
             )
         except Exception as e:
             logging.error(f'Erro ao criar Usuário: {e}')
@@ -40,7 +47,12 @@ class UserRepository:
 
             if user:
                 return UserDTO(
-                    id=user.id, username=user.username, email=user.email
+                    id=user.id,
+                    name=user.name,
+                    username=user.username,
+                    email=user.email,
+                    password=user.password,
+                    uuid=str(user.uuid),
                 )
 
             return None
@@ -48,19 +60,23 @@ class UserRepository:
             logging.error(f'Erro ao buscar usuário por email: {e}')
             raise
 
-    async def verify_password(self, email: str, password: str) -> bool:
+    async def get_by_uuid(self, uuid: str) -> Optional[UserDTO]:
         try:
             result = await self.session.execute(
-                select(User).where(User.email == email)
+                select(User).where(User.uuid == uuid)
             )
             user = result.scalar()
 
             if user:
-                return self.encode.verify(
-                    password=password, password_hash=user.password
+                return UserDTO(
+                    id=user.id,
+                    name=user.name,
+                    username=user.username,
+                    email=user.email,
+                    uuid=str(user.uuid),
                 )
 
-            return False
+            return None
         except Exception as e:
-            logging.error(f'Erro de credenciais inválida: {e}')
+            logging.error(f'Erro ao buscar usuário por email: {e}')
             raise
