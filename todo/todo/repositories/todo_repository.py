@@ -69,13 +69,17 @@ class TodoRepository:
             logging.error(f'Erro ao buscar ToDo: {e}')
             raise
 
-    async def create(self, todo: TodoCreateDTO) -> TodoDTO:
+    async def create(
+        self,
+        todo: TodoCreateDTO,
+        user_uuid: str
+    ) -> TodoDTO:
         try:
             todo_db = Todo(
                 title=todo.title,
                 description=todo.description,
                 state=todo.state,
-                user_uuid=str(uuid4()),
+                user_uuid=user_uuid,
             )
 
             self.session.add(todo_db)

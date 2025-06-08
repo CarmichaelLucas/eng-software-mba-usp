@@ -32,3 +32,5 @@ RUN chown -R docker:usergroup /srv/ && \
 USER docker
 
 EXPOSE 3030
+EXPOSE 3040
+EXPOSE 3050

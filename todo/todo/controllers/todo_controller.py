@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi_pagination import Page, paginate
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,6 +12,8 @@ from todo.schemas.todo_dto import (
 )
 from todo.services.todo_service import TodoService
 
+from ..middleware import validate_token
+
 router = APIRouter()
 
 
@@ -22,11 +24,13 @@ router = APIRouter()
     description='Criar Todo',
 )
 async def create(
-    params: TodoCreateDTO, session: AsyncSession = Depends(get_session)
+    params: TodoCreateDTO,
+    session: AsyncSession = Depends(get_session),
+    user_uuid: dict = Depends(validate_token)
 ):
     try:
         service = TodoService(session=session)
-        return await service.create(todo=params)
+        return await service.create(todo=params, user_uuid=user_uuid)
     except (Exception, ValueError) as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
@@ -40,7 +44,8 @@ async def create(
     description='Listar Todos',
 )
 async def get_all(
-    filters: Annotated[TodoFilterDTO, Query()], session: AsyncSession = Depends(get_session)
+    filters: Annotated[TodoFilterDTO, Query()],
+    session: AsyncSession = Depends(get_session)
 ):
     try:
         service = TodoService(session=session)

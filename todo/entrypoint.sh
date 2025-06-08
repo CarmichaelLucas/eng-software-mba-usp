@@ -16,4 +16,4 @@ alembic upgrade head
 
 # Inicia a aplicação
 echo "Waiting for start app..."
-uvicorn --host 0.0.0.0 --port 3030 todo.app:app --reload
+uvicorn --host 0.0.0.0 --port 3040 todo.app:app --reload

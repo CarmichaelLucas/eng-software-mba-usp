@@ -16,4 +16,4 @@ alembic upgrade head
 
 # Inicia a aplicação
 echo "Waiting for start app..."
-uvicorn --host 0.0.0.0 --port 3030 project.app:app --reload
+uvicorn --host 0.0.0.0 --port 3050 project.app:app --reload
