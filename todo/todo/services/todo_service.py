@@ -25,8 +25,12 @@ class TodoService:
 
         return todo
 
-    async def create(self, todo: TodoCreateDTO) -> TodoDTO:
-        return await self.repository.create(todo=todo)
+    async def create(
+        self,
+        todo: TodoCreateDTO,
+        user_uuid: str
+    ) -> TodoDTO:
+        return await self.repository.create(todo=todo, user_uuid=user_uuid)
 
     async def update(self, id: int, new_state: str):
         todo = await self.get_by_id(id=id)
