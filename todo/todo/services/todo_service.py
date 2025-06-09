@@ -1,3 +1,4 @@
+import logging
 from typing import List, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,11 +26,7 @@ class TodoService:
 
         return todo
 
-    async def create(
-        self,
-        todo: TodoCreateDTO,
-        user_uuid: str
-    ) -> TodoDTO:
+    async def create(self, todo: TodoCreateDTO, user_uuid: str) -> TodoDTO:
         return await self.repository.create(todo=todo, user_uuid=user_uuid)
 
     async def update(self, id: int, new_state: str):
@@ -39,3 +36,19 @@ class TodoService:
     async def delete(self, id: int):
         todo = await self.get_by_id(id=id)
         return await self.repository.delete(id=todo.id)
+
+    async def consume(self, msg):
+        try:
+            if msg['allowed']:
+                todo = TodoCreateDTO(
+                    title=msg['title'],
+                    description=msg['description'],
+                    state=msg['state'],
+                )
+
+                await self.create(todo=todo, user_uuid=msg['user_uuid'])
+            else:
+                raise Exception(f'Não autorizado a inclusão do ToDo.')
+        except Exception as e:
+            logging.error(f'Erro ao processar consumo: {e}')
+            raise

@@ -11,8 +11,14 @@ from todo.schemas.todo_dto import (
     TodoFilterDTO,
 )
 from todo.services.todo_service import TodoService
+from todo.services.messaging_service import ProducerService
 
-from ..middleware import validate_token
+from ..middleware import (
+    validate_token,
+    validate_token_messaging,
+)
+
+from todo import settings
 
 router = APIRouter()
 
@@ -26,7 +32,7 @@ router = APIRouter()
 async def create(
     params: TodoCreateDTO,
     session: AsyncSession = Depends(get_session),
-    user_uuid: dict = Depends(validate_token)
+    user_uuid: dict = Depends(validate_token),
 ):
     try:
         service = TodoService(session=session)
@@ -36,6 +42,34 @@ async def create(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
         )
 
+@router.post(
+    '/todos/produce',
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+    description='Criar Todo',
+)
+async def create(
+    params: TodoCreateDTO,
+    token: dict = Depends(validate_token_messaging),
+):
+    try:
+        messaging = ProducerService()
+        messaging.call(
+            topic=settings.token_validation_request_topic,
+            msg={
+                'token': token,
+                'todo': {
+                    'title': params.title,
+                    'description': params.description,
+                    'state': params.state
+            }
+        })
+
+        return {'message': 'ToDo sendo criado. Aguarde alguns segundos!'}
+    except (Exception, ValueError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
+        )
 
 @router.get(
     '/todos/',
@@ -45,7 +79,7 @@ async def create(
 )
 async def get_all(
     filters: Annotated[TodoFilterDTO, Query()],
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     try:
         service = TodoService(session=session)
