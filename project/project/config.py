@@ -10,5 +10,8 @@ class Settings(BaseSettings):
     algorithm: str
     access_token_expire_minutes: int
     refresh_token_expire_days: int
+    kafka_bootstrap_servers: str
+    token_validation_request_topic: str
+    token_validation_response_topic: str
 
     model_config = SettingsConfigDict(env_file='.env')
