@@ -1,6 +1,5 @@
 import logging
 from typing import List, Optional
-from uuid import uuid4
 
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -69,11 +68,7 @@ class TodoRepository:
             logging.error(f'Erro ao buscar ToDo: {e}')
             raise
 
-    async def create(
-        self,
-        todo: TodoCreateDTO,
-        user_uuid: str
-    ) -> TodoDTO:
+    async def create(self, todo: TodoCreateDTO, user_uuid: str) -> TodoDTO:
         try:
             todo_db = Todo(
                 title=todo.title,
