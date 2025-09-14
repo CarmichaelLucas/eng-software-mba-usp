@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "common"
+version = "0.1.0"
+description = ""
+authors = ["Lucas Carmichael <carmichael.lucas@outlook.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+locust = "^2.37.10"
+faker = "^37.3.0"
+httpie = "^3.2.4"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -11,6 +11,10 @@ from todo.schemas.todo_dto import (
     TodoFilterDTO,
 )
 
+from opentelemetry.trace import get_tracer
+
+tracer = get_tracer('todo')
+
 
 class TodoRepository:
     def __init__(self, session: AsyncSession):
@@ -69,27 +73,28 @@ class TodoRepository:
             raise
 
     async def create(self, todo: TodoCreateDTO, user_uuid: str) -> TodoDTO:
-        try:
-            todo_db = Todo(
-                title=todo.title,
-                description=todo.description,
-                state=todo.state,
-                user_uuid=user_uuid,
-            )
+        with tracer.start_as_current_span("todo.create_todo_repository"):
+            try:
+                todo_db = Todo(
+                    title=todo.title,
+                    description=todo.description,
+                    state=todo.state,
+                    user_uuid=user_uuid,
+                )
 
-            self.session.add(todo_db)
-            await self.session.commit()
-            await self.session.refresh(todo_db)
+                self.session.add(todo_db)
+                await self.session.commit()
+                await self.session.refresh(todo_db)
 
-            return TodoDTO(
-                id=todo_db.id,
-                title=todo_db.title,
-                description=todo_db.description,
-                state=todo_db.state,
-            )
-        except Exception as e:
-            logging.error(f'Erro ao criar ToDo: {e}')
-            raise
+                return TodoDTO(
+                    id=todo_db.id,
+                    title=todo_db.title,
+                    description=todo_db.description,
+                    state=todo_db.state,
+                )
+            except Exception as e:
+                logging.error(f'Erro ao criar ToDo: {e}')
+                raise
 
     async def update(self, id: int, new_state: str):
         try:

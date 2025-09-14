@@ -1,0 +1,92 @@
+from locust import HttpUser, task, between, LoadTestShape
+from faker import Faker
+import requests
+
+class TodoWithAuthUserAsync(HttpUser):
+    fake = Faker()
+    wait_time = between(1, 2)
+    token = None
+    host = "http://localhost:3042"
+
+    def on_start(self):
+        auth_response = requests.post(
+            "http://0.0.0.0:3052/api/v1/oauth/login?email=teste%40example.com&password=Senha!123"
+        )
+
+        if auth_response.status_code == 201:
+            self.token = auth_response.json()["access_token"]
+        else:
+            self.token = None
+            print(f"Erro ao autenticar: {auth_response.json()}")
+
+
+    @task
+    def criar_todo_async(self):
+        if not self.token:
+            return
+
+        self.client.post(
+            "/api/v1/todos/async",
+            headers={"Authorization": f"Bearer {self.token}"},
+            json={
+                "title": self.fake.name(),
+                "description": self.fake.text(max_nb_chars=100),
+                "state": "todo"
+            },
+            name='Async'
+        )
+        
+class TodoWithAuthUserSync(HttpUser):
+    fake = Faker()
+    wait_time = between(1, 2)
+    token = None
+    host = "http://localhost:3040"
+
+    def on_start(self):
+        auth_response = requests.post(
+            "http://0.0.0.0:3050/api/v1/oauth/login?email=teste%40example.com&password=Senha!123"
+        )
+
+        if auth_response.status_code == 201:
+            self.token = auth_response.json()["access_token"]
+        else:
+            self.token = None
+            print(f"Erro ao autenticar: {auth_response.json()}")
+
+
+    @task
+    def criar_todo(self):
+        if not self.token:
+            return
+
+        self.client.post(
+            "/api/v1/todos",
+            headers={"Authorization": f"Bearer {self.token}"},
+            json={
+                "title": self.fake.name(),
+                "description": self.fake.text(max_nb_chars=100),
+                "state": "todo"
+            },
+            name='Sync'
+        )
+
+
+class StageShape(LoadTestShape):
+    """
+    Carga progressiva durante 1 hora.
+    """
+    stages = [
+        {"duration": 600, "users": 50, "spawn_rate": 5},     # 0-10min: aquece
+        {"duration": 1200, "users": 200, "spawn_rate": 10},  # 10-20min: sobe carga
+        {"duration": 1800, "users": 500, "spawn_rate": 20},  # 20-30min: estabiliza médio
+        {"duration": 2400, "users": 1000, "spawn_rate": 50}, # 30-40min: pico
+        {"duration": 3000, "users": 500, "spawn_rate": 20},  # 40-50min: reduz
+        {"duration": 3600, "users": 100, "spawn_rate": 5},   # 50-60min: resfriamento
+    ]
+
+    def tick(self):
+        run_time = self.get_run_time()
+        for stage in self.stages:
+            if run_time < stage["duration"]:
+                return stage["users"], stage["spawn_rate"]
+        return None

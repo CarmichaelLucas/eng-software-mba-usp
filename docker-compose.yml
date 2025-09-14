@@ -1,0 +1,175 @@
+version: '3.9'
+
+services:
+  x-base-config: &base-config
+    image: alpine
+    tty: true
+    environment:
+      WAIT_FOR_DB: 1
+      WAIT_FOR_MSG: 1
+      DB_HOST: postgres
+      DB_PORT: 5432
+      KAFKA_HOST: kafka
+      KAFKA_PORT: 29092
+    mem_limit: 512m
+    cpus: '2'
+
+  kafka_ui:
+    image: provectuslabs/kafka-ui
+    container_name: kafka-ui
+    ports:
+      - "8080:8080"
+    restart: always
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092
+    depends_on:
+      - kafka
+    mem_limit: 256m
+
+  kafka:
+    image: obsidiandynamics/kafka
+    container_name: kafka
+    restart: "no"
+    ports:
+      - "2181:2181"
+      - "9093:9093"
+    environment:
+      KAFKA_LISTENERS: "INTERNAL://:29092,EXTERNAL://:9093"
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka:29092,EXTERNAL://localhost:9093"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "INTERNAL"
+      KAFKA_ZOOKEEPER_SESSION_TIMEOUT: "6000"
+      KAFKA_RESTART_ATTEMPTS: "10"
+      KAFKA_RESTART_DELAY: "5"
+      ZOOKEEPER_AUTOPURGE_PURGE_INTERVAL: "0"
+    healthcheck:
+      test: nc -z localhost 29092 || exit
+      interval: 10s
+      timeout: 5s
+      retries: 15
+    mem_limit: 512m
+    cpus: '2'
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: docker
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./bin/database/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    mem_limit: 512m
+   
+  auth_api:
+    <<: *base-config
+    image: tcc/auth
+    build:
+      context: ./auth
+      dockerfile: Dockerfile
+    container_name: auth_api
+    ports:
+      - "3050:3030"
+    volumes:
+      - ${PWD}/auth/:/srv
+    depends_on:
+      - postgres
+      - otel
+    command: ./entrypoint.sh
+
+  todo_api:
+    <<: *base-config
+    image: tcc/todo
+    build:
+      context: ./todo
+      dockerfile: Dockerfile
+    container_name: todo_api
+    ports:
+      - "3040:3030"
+    volumes:
+      - ${PWD}/todo/:/srv
+    depends_on:
+      - auth_api
+    command: ./entrypoint.sh
+
+
+### SERVIÇOS ASYNC ###
+
+  auth_async_api:
+    <<: *base-config
+    image: tcc/auth_async
+    build:
+      context: ./auth_async
+      dockerfile: Dockerfile
+    container_name: auth_async_api
+    ports:
+      - "3052:3030"
+    volumes:
+      - ${PWD}/auth_async/:/srv
+    depends_on:
+      - postgres
+      - otel
+    command: ./entrypoint.sh
+
+  auth_async_consumer:
+    <<: *base-config
+    image: tcc/auth_async
+    build:
+      context: ./auth_async
+      dockerfile: Dockerfile
+    container_name: auth_async_consumer
+    ports:
+      - "3053:3030"
+    volumes:
+      - ${PWD}/auth_async/:/srv
+    depends_on:
+      - auth_async_api
+      - kafka_ui
+    command: ./entrypoint_consumer.sh
+
+  todo_async_api:
+    <<: *base-config
+    image: tcc/todo_async
+    build:
+      context: ./todo_async
+      dockerfile: Dockerfile
+    container_name: todo_async_api
+    ports:
+      - "3042:3030"
+    volumes:
+      - ${PWD}/todo_async/:/srv
+    depends_on:
+      - postgres
+      - otel
+    command: ./entrypoint.sh
+
+  todo_async_consumer:
+    <<: *base-config
+    image: tcc/todo_async
+    build:
+      context: ./todo_async
+      dockerfile: Dockerfile
+    container_name: todo_async_consumer
+    ports:
+      - "3043:3030"
+    volumes:
+      - ${PWD}/todo_async/:/srv
+    depends_on:
+      - todo_async_api
+      - auth_async_consumer
+    command: ./entrypoint_consumer.sh
+
+  otel:
+    image: grafana/otel-lgtm
+    ports:
+      - 3000:3000
+      - 4318:4318
+      - 9090:9090
+      - 4317:4317
+    mem_limit: 2g
+
+volumes:
+  postgres_data:

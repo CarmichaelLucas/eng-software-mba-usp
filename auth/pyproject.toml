@@ -1,0 +1,71 @@
+[tool.poetry]
+name = "auth"
+version = "0.1.0"
+description = ""
+authors = ["Lucas Carmichael <carmichael.lucas@outlook.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<4.0"
+fastapi = {extras = ["standard"], version = "^0.115.12"}
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+pydantic-settings = "^2.9.1"
+sqlalchemy = {extras = ["asyncio"], version = "^2.0.41"}
+alembic = "^1.16.1"
+tzdata = "^2025.2"
+aiokafka = "^0.12.0"
+aiosqlite = "^0.21.0"
+psycopg2-binary = "^2.9.10"
+asyncpg = "^0.30.0"
+asyncio = "^3.4.3"
+pyjwt = "^2.10.1"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.5"
+pytest-cov = "^6.1.1"
+taskipy = "^1.14.1"
+ruff = "^0.11.11"
+pytest-asyncio = "^1.0.0"
+httpx = "^0.28.1"
+
+
+[tool.poetry.group.otel.dependencies]
+opentelemetry-distro = "^0.55b0"
+opentelemetry-exporter-otlp = "^1.34.0"
+opentelemetry-instrumentation-aiokafka = "^0.55b0"
+opentelemetry-instrumentation-system-metrics = "^0.55b1"
+psutil = "6"
+
+[tool.ruff]
+line-length = 79
+extend-exclude = ['migrations']
+
+[tool.ruff.lint]
+preview = true
+select = ['I', 'F', 'E', 'W', 'PL', 'PT']
+
+[tool.ruff.format]
+preview = true
+quote-style = 'single'
+
+[tool.pytest.ini_options]
+pythonpath = "."
+addopts = '-p no:warnings'
+asyncio_default_fixture_loop_scope = 'function'
+
+[tool.coverage.run]
+concurrency = ["thread", "greenlet"]
+
+[tool.taskipy.tasks]
+lint = 'ruff check'
+pre_format = 'ruff check --fix'
+format = 'ruff format'
+run = 'fastapi dev project/app.py'
+pre_test = 'task lint'
+test = 'pytest -s -x --cov=project -vv'
+post_test = 'coverage html'
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
