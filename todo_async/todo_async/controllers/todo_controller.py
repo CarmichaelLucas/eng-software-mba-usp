@@ -5,8 +5,6 @@ from todo_async.schemas.todo_dto import (
     TodoCreateDTO,
 )
 
-from todo_async.services.messaging_service import ProducerService
-
 from ..middleware import (
     validate_token_messaging,
 )
@@ -29,8 +27,8 @@ async def create_async(
 ):
     with tracer.start_as_current_span("todo_async.kafka_create_todo") as span:
         try:
-            messaging = ProducerService()
-            await messaging.call(
+            from todo_async.app import kafka_service
+            await kafka_service.produce(
                 topic=settings.token_validation_request_topic,
                 msg={
                     'token': token,

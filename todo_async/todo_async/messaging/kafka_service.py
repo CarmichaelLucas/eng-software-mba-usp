@@ -2,6 +2,8 @@ import asyncio
 import json
 import logging
 
+from fastapi import Depends
+
 from aiokafka import (
     AIOKafkaConsumer,
     AIOKafkaProducer,
@@ -23,49 +25,50 @@ tracer = get_tracer('todo_async')
 
 class KafkaService:
     def __init__(self):
+        self.loop = None
+        self.producer: AIOKafkaProducer | None = None
+
+    async def start(self):
         self.loop = asyncio.get_event_loop()
+        self.producer = AIOKafkaProducer(
+            bootstrap_servers=settings.kafka_bootstrap_servers
+        )
+        await self.producer.start()
 
-    async def producer(self, topic: str, msg: dict):
+    async def stop(self):
+        if self.producer:
+            await self.producer.stop()
+
+    async def produce(self, topic: str, msg: dict):
         try:
-            producer = AIOKafkaProducer(
-                bootstrap_servers=settings.kafka_bootstrap_servers
-            )
-            await producer.start()
+            headers = {}
+            inject(headers)
+            kafka_headers = [(k, v.encode()) for k, v in headers.items()]
 
-            try:
-                headers = {}
-                inject(headers)
-                kafka_headers = [(k, v.encode()) for k, v in headers.items()]
-
-                with tracer.start_as_current_span("kafka_produce", attributes={
-                    "messaging.system": "kafka",
-                    "messaging.destination": topic,
-                    "messaging.operation": "send"
-                }):
-                    await producer.send_and_wait(
-                        topic,
-                        json.dumps(msg).encode(),
-                        headers=kafka_headers
-                    )
-            finally:
-                await producer.stop()
+            with tracer.start_as_current_span("messaging.produce", attributes={
+                "messaging.system": "kafka",
+                "messaging.destination": topic,
+                "messaging.destination_kind": "topic",
+                "messaging.operation": "send",
+                "messaging.kafka.message_key": msg.get("id", None),
+            }):
+                await self.producer.send_and_wait(
+                    topic,
+                    json.dumps(msg).encode(),
+                    headers=kafka_headers
+                )
 
         except Exception as e:
             logging.error(f'Erro ao produzir mensagem no Kafka: {e}')
 
-    async def consumer(self, topic: str, service: Consumer):
+    async def consume(self, topic: str, service: Consumer):
         consumer = AIOKafkaConsumer(
             topic,
             loop=self.loop,
             bootstrap_servers=settings.kafka_bootstrap_servers,
         )
 
-        try:
-            await consumer.start()
-
-        except Exception as e:
-            logging.error(f'Erro Kafka: {e}')
-            return
+        await consumer.start()
 
         try:
             async for msg in consumer:
@@ -73,12 +76,14 @@ class KafkaService:
                 ctx = extract(headers)
                 token = attach(ctx)
                 try:
-                    with tracer.start_as_current_span("kafka_consume", attributes={
+                    with tracer.start_as_current_span("messaging.consume", attributes={
                         "messaging.system": "kafka",
                         "messaging.destination": topic,
+                        "messaging.destination_kind": "topic",
                         "messaging.operation": "receive",
                         "messaging.kafka.partition": msg.partition,
                         "messaging.kafka.offset": msg.offset,
+                        # "messaging.kafka.consumer_group": settings.kafka_consumer_group,
                     }):
                         await service.call(msg)
                 finally:
