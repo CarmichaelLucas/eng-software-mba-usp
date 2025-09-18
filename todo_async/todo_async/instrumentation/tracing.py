@@ -1,11 +1,15 @@
+import socket
+
 from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 
-resource = Resource(attributes={
+resource = Resource.create({
     "service.name": "todo_async",
+    "service.instance.id": socket.gethostname(),
+    "service.version": "1.0.0"
 })
 
 trace.set_tracer_provider(TracerProvider(resource=resource))

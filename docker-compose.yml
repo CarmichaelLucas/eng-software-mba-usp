@@ -11,8 +11,20 @@ services:
       DB_PORT: 5432
       KAFKA_HOST: kafka
       KAFKA_PORT: 29092
-    mem_limit: 512m
+    mem_limit: 2g
     cpus: '2'
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    ports:
+      - "8081:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    restart: always
 
   kafka_ui:
     image: provectuslabs/kafka-ui
@@ -25,7 +37,7 @@ services:
       - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092
     depends_on:
       - kafka
-    mem_limit: 256m
+    mem_limit: 512m
 
   kafka:
     image: obsidiandynamics/kafka
@@ -48,7 +60,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 15
-    mem_limit: 512m
+    mem_limit: 2g
     cpus: '2'
 
   postgres:
@@ -62,7 +74,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./bin/database/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
-    mem_limit: 512m
+    mem_limit: 1g
    
   auth_api:
     <<: *base-config
@@ -71,6 +83,8 @@ services:
       context: ./auth
       dockerfile: Dockerfile
     container_name: auth_api
+    environment:
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=auth,service.instance.id=auth_api
     ports:
       - "3050:3030"
     volumes:
@@ -87,6 +101,8 @@ services:
       context: ./todo
       dockerfile: Dockerfile
     container_name: todo_api
+    environment:
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=todo,service.instance.id=todo_api
     ports:
       - "3040:3030"
     volumes:
@@ -105,6 +121,8 @@ services:
       context: ./auth_async
       dockerfile: Dockerfile
     container_name: auth_async_api
+    environment:
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=auth_async,service.instance.id=auth_async_api
     ports:
       - "3052:3030"
     volumes:
@@ -121,6 +139,8 @@ services:
       context: ./auth_async
       dockerfile: Dockerfile
     container_name: auth_async_consumer
+    environment:
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=auth_async,service.instance.id=auth_async_api
     ports:
       - "3053:3030"
     volumes:
@@ -137,6 +157,8 @@ services:
       context: ./todo_async
       dockerfile: Dockerfile
     container_name: todo_async_api
+    environment:
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=todo_async,service.instance.id=todo_async_api
     ports:
       - "3042:3030"
     volumes:
@@ -153,6 +175,8 @@ services:
       context: ./todo_async
       dockerfile: Dockerfile
     container_name: todo_async_consumer
+    environment:
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=todo_async,service.instance.id=todo_async_api
     ports:
       - "3043:3030"
     volumes:
@@ -169,6 +193,10 @@ services:
       - 4318:4318
       - 9090:9090
       - 4317:4317
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - cadvisor
     mem_limit: 2g
 
 volumes:
