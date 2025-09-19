@@ -8,7 +8,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from todo_async import settings
-
 from todo_async.messaging.kafka_service import KafkaService
 
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
@@ -28,7 +27,10 @@ async def lifespan(app):
 
     from todo_async.messaging.consumer import Consumer
     asyncio.create_task(
-        kafka_service.consume(topic=settings.token_validation_response_topic, service=Consumer())
+        kafka_service.consume(
+            topic=settings.token_validation_response_topic,
+            service=Consumer()
+        )
     )
 
     yield

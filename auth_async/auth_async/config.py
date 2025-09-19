@@ -13,5 +13,6 @@ class Settings(BaseSettings):
     kafka_bootstrap_servers: str
     token_validation_request_topic: str
     token_validation_response_topic: str
+    auth_dlq_topic: str
 
     model_config = SettingsConfigDict(env_file='.env')

@@ -18,11 +18,11 @@ class TodoService:
         self.repository = TodoRepository(session=session)
 
     async def create(self, todo: TodoCreateDTO, user_uuid: str) -> TodoDTO:
-        with tracer.start_as_current_span("todo_async.http_create_todo_service"):
+        with tracer.start_as_current_span("todo_async.service.create"):
             return await self.repository.create(todo=todo, user_uuid=user_uuid)
 
     async def consume(self, msg):
-        with tracer.start_as_current_span("todo_async.create_todo_consumer"):
+        with tracer.start_as_current_span("todo_async.service.consumer"):
             try:
                 if msg['allowed']:
                     todo = TodoCreateDTO(

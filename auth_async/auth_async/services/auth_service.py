@@ -38,7 +38,7 @@ class AuthService:
         )
 
     async def validate(self, token: str) -> AuthPublicUserResponse:
-        with tracer.start_as_current_span("auth_async.validate_token") as span:
+        with tracer.start_as_current_span("auth_async.service.validate") as span:
             user_uuid = self.jwt.verify(token=token)
 
             user = await self.user_service.get_by_uuid(uuid=user_uuid)
@@ -52,12 +52,13 @@ class AuthService:
             )
 
     async def consume(self, msg: dict):
-        with tracer.start_as_current_span("auth_async.consume") as span:
+        with tracer.start_as_current_span("auth_async.service.consume") as span:
             try:
                 auth = await self.validate(token=msg['token'])
 
                 if auth.allowed:
-                    await self.produce(
+                    from auth_async.consume import kafka_service
+                    await kafka_service.produce(
                         topic=settings.token_validation_response_topic,
                         msg={
                             'allowed': auth.allowed,
@@ -71,12 +72,3 @@ class AuthService:
             except Exception as e:
                 logging.error(f'Erro ao validar token: {e}')
                 raise
-
-    @classmethod
-    async def produce(self, topic: str, msg: dict):
-        from auth_async.services.messaging_service import ProducerService
-        try:
-            await ProducerService().call(topic=topic, msg=msg)
-        except Exception as e:
-            logging.error(f'Erro ao produzir mensagem: {e}')
-            raise

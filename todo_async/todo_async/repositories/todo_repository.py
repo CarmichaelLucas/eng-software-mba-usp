@@ -18,10 +18,10 @@ class TodoRepository:
         self.session = session
 
     async def create(self, todo: TodoCreateDTO, user_uuid: str) -> TodoDTO:
-        with tracer.start_as_current_span("db.todo.insert", attributes={
+        with tracer.start_as_current_span("db.todo_async.insert", attributes={
             "db.system": "postgresql",
             "db.operation": "INSERT",
-            "db.sql.table": "todo",
+            "db.sql.table": "todo_async",
             "enduser.id": user_uuid,
         }):
             try:

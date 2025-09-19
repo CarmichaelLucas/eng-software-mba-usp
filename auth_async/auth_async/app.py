@@ -10,15 +10,21 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.metrics import get_meter_provider
 
 from auth_async.controllers import main_router
+from auth_async.messaging.kafka_service import KafkaService
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
 
+kafka_service: KafkaService | None = None
 
 @asynccontextmanager
 async def lifespan(app):
+    global kafka_service
+    kafka_service = KafkaService()
+    await kafka_service.start()
     yield
+    await kafka_service.stop()
 
 app = FastAPI(lifespan=lifespan)
 FastAPIInstrumentor.instrument_app(app, meter_provider=get_meter_provider())

@@ -9,6 +9,10 @@ from auth_async.models.user_model import User
 from auth_async.schemas.user_dto import UserDTO
 from auth_async.utils.encode_util import EncodeUtil
 
+from opentelemetry.trace import get_tracer
+
+tracer = get_tracer('auth_async')
+
 
 class UserRepository:
     def __init__(self, session: AsyncSession):
@@ -61,22 +65,28 @@ class UserRepository:
             raise
 
     async def get_by_uuid(self, uuid: str) -> Optional[UserDTO]:
-        try:
-            result = await self.session.execute(
-                select(User).where(User.uuid == uuid)
-            )
-            user = result.scalar()
-
-            if user:
-                return UserDTO(
-                    id=user.id,
-                    name=user.name,
-                    username=user.username,
-                    email=user.email,
-                    uuid=str(user.uuid),
+        with tracer.start_as_current_span("db.auth_async.select", attributes={
+            "db.system": "postgresql",
+            "db.operation": "SELECT",
+            "db.sql.table": "auth_async",
+            "enduser.id": uuid,
+        }):       
+            try:
+                result = await self.session.execute(
+                    select(User).where(User.uuid == uuid)
                 )
+                user = result.scalar()
 
-            return None
-        except Exception as e:
-            logging.error(f'Erro ao buscar usuário por email: {e}')
-            raise
+                if user:
+                    return UserDTO(
+                        id=user.id,
+                        name=user.name,
+                        username=user.username,
+                        email=user.email,
+                        uuid=str(user.uuid),
+                    )
+
+                return None
+            except Exception as e:
+                logging.error(f'Erro ao buscar usuário por email: {e}')
+                raise

@@ -2,8 +2,6 @@ import asyncio
 import json
 import logging
 
-from fastapi import Depends
-
 from aiokafka import (
     AIOKafkaConsumer,
     AIOKafkaProducer,
