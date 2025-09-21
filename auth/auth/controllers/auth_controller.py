@@ -11,7 +11,9 @@ from auth.schemas.auth_dto import (
     AuthPublicUserResponse,
 )
 from auth.services.auth_service import AuthService
+from opentelemetry.trace import get_tracer
 
+tracer = get_tracer('auth')
 router = APIRouter()
 
 
@@ -43,12 +45,13 @@ async def validate_token(
     token: Annotated[str, Depends(OAuth2PasswordBearer(tokenUrl='token'))],
     session: AsyncSession = Depends(get_session),
 ):
-    try:
-        service = AuthService(session=session)
-        return await service.validate(token=token)
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail='Credenciais inválida. Realize o login!',
-            headers={'WWW-Authenticate': 'Bearer'},
-        )
+    with tracer.start_as_current_span("auth.controller.validate_token"):
+        try:
+            service = AuthService(session=session)
+            return await service.validate(token=token)
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail='Credenciais inválida. Realize o login!',
+                headers={'WWW-Authenticate': 'Bearer'},
+            )

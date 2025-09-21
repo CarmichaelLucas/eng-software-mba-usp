@@ -29,7 +29,7 @@ class TodoService:
         return todo
 
     async def create(self, todo: TodoCreateDTO, user_uuid: str) -> TodoDTO:
-        with tracer.start_as_current_span("todo.http_create_todo_service"):
+        with tracer.start_as_current_span("todo.service.create"):
             return await self.repository.create(todo=todo, user_uuid=user_uuid)
 
     async def update(self, id: int, new_state: str):

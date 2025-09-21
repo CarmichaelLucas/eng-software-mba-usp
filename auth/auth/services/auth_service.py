@@ -35,7 +35,7 @@ class AuthService:
         )
 
     async def validate(self, token: str) -> AuthPublicUserResponse:
-        with tracer.start_as_current_span("auth.validate_token") as span:
+        with tracer.start_as_current_span("auth.service.validate") as span:
             user_uuid = self.jwt.verify(token=token)
 
             user = await self.user_service.get_by_uuid(uuid=user_uuid)

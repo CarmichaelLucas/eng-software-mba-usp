@@ -33,7 +33,7 @@ async def create(
     session: AsyncSession = Depends(get_session),
     user_uuid: dict = Depends(validate_token),
 ):
-    with tracer.start_as_current_span("todo.http_create_todo"):
+    with tracer.start_as_current_span("todo.controller.create"):
         try:
             service = TodoService(session=session)
             return await service.create(todo=params, user_uuid=user_uuid)

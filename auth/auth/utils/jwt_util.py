@@ -6,7 +6,9 @@ import jwt
 from jwt.exceptions import InvalidTokenError
 
 from auth import settings
+from opentelemetry.trace import get_tracer
 
+tracer = get_tracer('auth')
 
 class JWTUtil:
     @staticmethod
@@ -50,12 +52,13 @@ class JWTUtil:
 
     @staticmethod
     def verify(token: str) -> Optional[str]:
-        try:
-            payload = jwt.decode(
-                token, settings.secret_key, algorithms=[settings.algorithm]
-            )
+        with tracer.start_as_current_span("auth.util.verify"):
+            try:
+                payload = jwt.decode(
+                    token, settings.secret_key, algorithms=[settings.algorithm]
+                )
 
-            return payload.get('sub')
-        except InvalidTokenError as e:
-            logging.error(f'Erro ao decidificar TOKEN: {e}')
-            raise
+                return payload.get('sub')
+            except InvalidTokenError as e:
+                logging.error(f'Erro ao decidificar TOKEN: {e}')
+                raise

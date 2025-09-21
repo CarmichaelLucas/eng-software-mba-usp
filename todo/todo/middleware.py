@@ -10,7 +10,7 @@ from opentelemetry.trace import get_tracer
 tracer = get_tracer('todo')
 
 async def validate_token(request: Request):
-    with tracer.start_as_current_span("todo.http_create_todo_middleware"):
+    with tracer.start_as_current_span("todo.middleware.validate_token"):
         authorization: str = request.headers.get('Authorization')
 
         if not authorization or not authorization.startswith('Bearer '):

@@ -73,7 +73,12 @@ class TodoRepository:
             raise
 
     async def create(self, todo: TodoCreateDTO, user_uuid: str) -> TodoDTO:
-        with tracer.start_as_current_span("todo.create_todo_repository"):
+        with tracer.start_as_current_span("db.todo.insert", attributes={
+            "db.system": "postgresql",
+            "db.operation": "INSERT",
+            "db.sql.table": "todo",
+            "enduser.id": user_uuid,
+        }):
             try:
                 todo_db = Todo(
                     title=todo.title,
