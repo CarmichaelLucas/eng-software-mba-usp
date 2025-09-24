@@ -11,6 +11,7 @@ from opentelemetry.metrics import get_meter_provider
 
 from auth_async.controllers import main_router
 from auth_async.messaging.kafka_service import KafkaService
+from auth_async.database import engine
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -25,6 +26,10 @@ async def lifespan(app):
     await kafka_service.start()
     yield
     await kafka_service.stop()
+
+    if engine:
+        await engine.dispose()
+        logger.info("Engine fechada.")
 
 app = FastAPI(lifespan=lifespan)
 FastAPIInstrumentor.instrument_app(app, meter_provider=get_meter_provider())

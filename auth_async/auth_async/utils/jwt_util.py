@@ -7,6 +7,7 @@ from jwt.exceptions import InvalidTokenError
 
 from auth_async import settings
 from opentelemetry.trace import get_tracer
+from opentelemetry.trace import Status, StatusCode
 
 tracer = get_tracer('auth_async')
 
@@ -59,7 +60,9 @@ class JWTUtil:
                     token, settings.secret_key, algorithms=[settings.algorithm]
                 )
 
+                span.set_status(Status(StatusCode.OK))
                 return payload.get('sub')
             except InvalidTokenError as e:
+                span.set_status(Status(StatusCode.ERROR, str(e)))
                 logging.error(f'Erro ao decidificar TOKEN: {e}')
                 raise

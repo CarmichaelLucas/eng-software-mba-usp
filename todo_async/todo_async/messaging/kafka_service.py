@@ -15,6 +15,7 @@ from opentelemetry.propagate import extract
 from opentelemetry.context import attach, detach
 from opentelemetry.propagate import inject
 from opentelemetry.trace import get_tracer
+from opentelemetry.trace import Status, StatusCode
 
 AIOKafkaInstrumentor().instrument()
 
@@ -48,16 +49,18 @@ class KafkaService:
                 "messaging.destination": topic,
                 "messaging.destination_kind": "topic",
                 "messaging.operation": "send",
-                "messaging.kafka.message_key": msg.get("id", None),
-            }):
+                # "messaging.kafka.message_key": msg.get("id", None),
+            }) as span:
                 await self.producer.send_and_wait(
                     topic,
                     json.dumps(msg).encode(),
                     headers=kafka_headers
                 )
-
+                span.set_status(Status(StatusCode.OK))
         except Exception as e:
+            span.set_status(Status(StatusCode.ERROR, str(e)))
             logging.error(f'Erro ao produzir mensagem no Kafka: {e}')
+            raise
 
     async def consume(self, topic: str, service: Consumer):
         consumer = AIOKafkaConsumer(
@@ -82,8 +85,12 @@ class KafkaService:
                         "messaging.kafka.partition": msg.partition,
                         "messaging.kafka.offset": msg.offset,
                         # "messaging.kafka.consumer_group": settings.kafka_consumer_group,
-                    }):
+                    }) as span:
                         await service.call(msg)
+                        span.set_status(Status(StatusCode.OK))
+                except Exception as e:
+                    span.set_status(Status(StatusCode.ERROR, str(e)))
+                    raise
                 finally:
                     detach(token)
         except Exception as e:

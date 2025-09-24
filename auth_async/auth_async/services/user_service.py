@@ -9,8 +9,9 @@ from auth_async.schemas.user_dto import (
 from auth_async.utils.encode_util import EncodeUtil
 
 from opentelemetry.trace import get_tracer
+from opentelemetry.trace import Status, StatusCode
 
-tracer = get_tracer('todo_async')
+tracer = get_tracer('auth_async')
 
 
 class UserService:
@@ -23,7 +24,13 @@ class UserService:
 
     async def get_by_uuid(self, uuid: str) -> UserDTO:
         with tracer.start_as_current_span("auth_async.service.select") as span:
-            return await self.repository.get_by_uuid(uuid=uuid)
+            try:
+                obj = await self.repository.get_by_uuid(uuid=uuid)
+                span.set_status(Status(StatusCode.OK))
+                return obj
+            except Exception as e:
+                span.set_status(Status(StatusCode.ERROR, str(e)))
+                raise
 
     async def verify_password(self, email: str, password: str) -> bool:
         user = await self.get_by_email(email=email)

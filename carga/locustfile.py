@@ -1,61 +1,89 @@
 from locust import HttpUser, task, between, LoadTestShape
 from faker import Faker
 import requests
-
-class TodoWithAuthUserAsync(HttpUser):
-    fake = Faker()
-    wait_time = between(1, 2)
-    token = None
-    host = "http://localhost:3042"
-
-    def on_start(self):
-        auth_response = requests.post(
-            "http://0.0.0.0:3052/api/v1/oauth/login?email=teste%40example.com&password=Senha!123"
-        )
-
-        if auth_response.status_code == 201:
-            self.token = auth_response.json()["access_token"]
-        else:
-            self.token = None
-            print(f"Erro ao autenticar: {auth_response.json()}")
+import time
 
 
-    @task
-    def criar_todo_async(self):
-        if not self.token:
-            return
+# class TodoWithAuthUserAsync(HttpUser):
+#     fake = Faker()
+#     wait_time = between(1, 2)
+#     token = None
+#     token_timestamp = 0  # armazena o último refresh do token
+#     token_ttl = 90 * 60  # 90 minutos em segundos
+#     host = "http://localhost:3042"
 
-        self.client.post(
-            "/api/v1/todos/async",
-            headers={"Authorization": f"Bearer {self.token}"},
-            json={
-                "title": self.fake.name(),
-                "description": self.fake.text(max_nb_chars=100),
-                "state": "todo"
-            },
-            name='Async'
-        )
-        
+#     def refresh_token(self):
+#         """Função responsável por renovar o token de autenticação."""
+#         auth_response = requests.post(
+#             "http://0.0.0.0:3052/api/v1/oauth/login?email=teste%40example.com&password=Senha!123"
+#         )
+
+#         if auth_response.status_code == 201:
+#             self.token = auth_response.json()["access_token"]
+#             self.token_timestamp = time.time()
+#         else:
+#             self.token = None
+#             print(f"Erro ao autenticar: {auth_response.text}")
+
+#     def on_start(self):
+#         self.refresh_token()
+
+#     def ensure_token_valid(self):
+#         """Verifica se o token precisa ser renovado."""
+#         if not self.token or (time.time() - self.token_timestamp) > self.token_ttl:
+#             self.refresh_token()
+
+#     @task
+#     def criar_todo_async(self):
+#         self.ensure_token_valid()
+
+#         if not self.token:
+#             return
+
+#         self.client.post(
+#             "/api/v1/todos/async",
+#             headers={"Authorization": f"Bearer {self.token}"},
+#             json={
+#                 "title": self.fake.name(),
+#                 "description": self.fake.text(max_nb_chars=100),
+#                 "state": "todo"
+#             },
+#             name="Async"
+#         )
+
 class TodoWithAuthUserSync(HttpUser):
     fake = Faker()
     wait_time = between(1, 2)
     token = None
+    token_timestamp = 0  # armazena o último refresh do token
+    token_ttl = 90 * 60  # 90 minutos em segundos
     host = "http://localhost:3040"
 
-    def on_start(self):
+    def refresh_token(self):
+        """Função responsável por renovar o token de autenticação."""
         auth_response = requests.post(
             "http://0.0.0.0:3050/api/v1/oauth/login?email=teste%40example.com&password=Senha!123"
         )
 
         if auth_response.status_code == 201:
             self.token = auth_response.json()["access_token"]
+            self.token_timestamp = time.time()
         else:
             self.token = None
-            print(f"Erro ao autenticar: {auth_response.json()}")
+            print(f"Erro ao autenticar: {auth_response.text}")
 
+    def on_start(self):
+        self.refresh_token()
+
+    def ensure_token_valid(self):
+        """Verifica se o token precisa ser renovado."""
+        if not self.token or (time.time() - self.token_timestamp) > self.token_ttl:
+            self.refresh_token()
 
     @task
     def criar_todo(self):
+        self.ensure_token_valid()
+
         if not self.token:
             return
 
@@ -76,7 +104,7 @@ class StageShape(LoadTestShape):
     para tempos cumulativos.
     """
 
-    # ### Baixa carga 10 minutos
+    ### Baixa carga 10 minutos
     # stages = [
     #     {"duration": 120, "users": 10, "spawn_rate": 2},
     #     {"duration": 180, "users": 50, "spawn_rate": 5},
@@ -85,15 +113,15 @@ class StageShape(LoadTestShape):
     #     {"duration": 120, "users": 100, "spawn_rate": 10},
     # ]
 
-    # ### Alta carga - 1 hora
-    # stages = [
-    #     {"duration": 600,  "users": 100,  "spawn_rate": 10},
-    #     {"duration": 900,  "users": 500,  "spawn_rate": 20},
-    #     {"duration": 1200, "users": 1000, "spawn_rate": 50},
-    #     {"duration": 1200, "users": 3000, "spawn_rate": 100},
-    #     {"duration": 600,  "users": 800,  "spawn_rate": 50},
-    #     {"duration": 300,  "users": 100,  "spawn_rate": 20},
-    # ]
+    ### Alta carga - 1 hora
+    stages = [
+        {"duration": 600,  "users": 100,  "spawn_rate": 10},
+        {"duration": 900,  "users": 500,  "spawn_rate": 20},
+        {"duration": 1200, "users": 1000, "spawn_rate": 50},
+        {"duration": 1200, "users": 3000, "spawn_rate": 100},
+        {"duration": 600,  "users": 800,  "spawn_rate": 50},
+        {"duration": 300,  "users": 100,  "spawn_rate": 20},
+    ]
 
     def __init__(self):
         super().__init__()

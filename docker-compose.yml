@@ -193,8 +193,10 @@ services:
       - 4318:4318
       - 9090:9090
       - 4317:4317
+      # - 3200:3200
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      # - ./tempo.yml:/etc/tempo/tempo.yml
     depends_on:
       - cadvisor
     mem_limit: 2g

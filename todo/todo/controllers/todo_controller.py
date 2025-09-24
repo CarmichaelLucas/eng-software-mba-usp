@@ -1,5 +1,6 @@
 from typing import Annotated
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi_pagination import Page, paginate
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +18,7 @@ from ..middleware import (
 )
 
 from opentelemetry.trace import get_tracer
+from opentelemetry.trace import Status, StatusCode
 
 tracer = get_tracer('todo')
 router = APIRouter()
@@ -33,11 +35,15 @@ async def create(
     session: AsyncSession = Depends(get_session),
     user_uuid: dict = Depends(validate_token),
 ):
-    with tracer.start_as_current_span("todo.controller.create"):
+    with tracer.start_as_current_span("todo.controller.create") as span:
         try:
             service = TodoService(session=session)
-            return await service.create(todo=params, user_uuid=user_uuid)
+            obj = await service.create(todo=params, user_uuid=user_uuid)
+            span.set_status(Status(StatusCode.OK))
+            return obj
         except (Exception, ValueError) as e:
+            span.set_status(Status(StatusCode.ERROR, str(e)))
+            logging.error(f'Erro ao criar ToDo: {e}')
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
             )

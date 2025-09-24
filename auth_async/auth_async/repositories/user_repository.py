@@ -10,6 +10,7 @@ from auth_async.schemas.user_dto import UserDTO
 from auth_async.utils.encode_util import EncodeUtil
 
 from opentelemetry.trace import get_tracer
+from opentelemetry.trace import Status, StatusCode
 
 tracer = get_tracer('auth_async')
 
@@ -70,7 +71,7 @@ class UserRepository:
             "db.operation": "SELECT",
             "db.sql.table": "auth_async",
             "enduser.id": uuid,
-        }):       
+        }) as span:       
             try:
                 result = await self.session.execute(
                     select(User).where(User.uuid == uuid)
@@ -78,7 +79,7 @@ class UserRepository:
                 user = result.scalar()
 
                 if user:
-                    return UserDTO(
+                    user_dto = UserDTO(
                         id=user.id,
                         name=user.name,
                         username=user.username,
@@ -86,7 +87,12 @@ class UserRepository:
                         uuid=str(user.uuid),
                     )
 
+                    span.set_status(Status(StatusCode.OK))
+                    return user_dto
+                
+                span.set_status(Status(StatusCode.ERROR, 'Usuário não encontrado'))
                 return None
             except Exception as e:
+                span.set_status(Status(StatusCode.ERROR, str(e)))
                 logging.error(f'Erro ao buscar usuário por email: {e}')
                 raise

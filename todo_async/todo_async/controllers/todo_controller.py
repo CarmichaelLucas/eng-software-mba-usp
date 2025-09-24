@@ -10,6 +10,7 @@ from ..middleware import (
 )
 
 from opentelemetry.trace import get_tracer
+from opentelemetry.trace import Status, StatusCode
 
 tracer = get_tracer('todo_async')
 router = APIRouter()
@@ -25,7 +26,7 @@ async def create_async(
     params: TodoCreateDTO,
     token: dict = Depends(validate_token_messaging),
 ):
-    with tracer.start_as_current_span("todo_async.kafka_create_todo") as span:
+    with tracer.start_as_current_span("todo_async.controller.create") as span:
         try:
             from todo_async.app import kafka_service
             await kafka_service.produce(
@@ -39,9 +40,10 @@ async def create_async(
                     },
                 },
             )
-
+            span.set_status(Status(StatusCode.OK))
             return {'message': 'ToDo sendo criado. Aguarde alguns segundos!'}
         except (Exception, ValueError) as e:
+            span.set_status(Status(StatusCode.ERROR, str(e)))
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
             )

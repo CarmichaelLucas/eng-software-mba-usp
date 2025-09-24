@@ -1,5 +1,5 @@
 from typing import List, Optional
-
+import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from todo.repositories.todo_repository import TodoRepository
@@ -9,6 +9,7 @@ from todo.schemas.todo_dto import (
     TodoFilterDTO,
 )
 from opentelemetry.trace import get_tracer
+from opentelemetry.trace import Status, StatusCode
 
 tracer = get_tracer('todo')
 
@@ -29,8 +30,15 @@ class TodoService:
         return todo
 
     async def create(self, todo: TodoCreateDTO, user_uuid: str) -> TodoDTO:
-        with tracer.start_as_current_span("todo.service.create"):
-            return await self.repository.create(todo=todo, user_uuid=user_uuid)
+        with tracer.start_as_current_span("todo.service.create") as span:
+            try:
+                obj = await self.repository.create(todo=todo, user_uuid=user_uuid)
+                span.set_status(Status(StatusCode.OK))
+                return obj
+            except Exception as e:
+                span.set_status(Status(StatusCode.ERROR, str(e)))
+                logging.error(f'Erro ao criar ToDo: {e}')
+                raise
 
     async def update(self, id: int, new_state: str):
         todo = await self.get_by_id(id=id)

@@ -12,6 +12,7 @@ from todo.schemas.todo_dto import (
 )
 
 from opentelemetry.trace import get_tracer
+from opentelemetry.trace import Status, StatusCode
 
 tracer = get_tracer('todo')
 
@@ -78,7 +79,7 @@ class TodoRepository:
             "db.operation": "INSERT",
             "db.sql.table": "todo",
             "enduser.id": user_uuid,
-        }):
+        }) as span:
             try:
                 todo_db = Todo(
                     title=todo.title,
@@ -91,13 +92,17 @@ class TodoRepository:
                 await self.session.commit()
                 await self.session.refresh(todo_db)
 
-                return TodoDTO(
+                
+                todo_dto = TodoDTO(
                     id=todo_db.id,
                     title=todo_db.title,
                     description=todo_db.description,
                     state=todo_db.state,
                 )
+                span.set_status(Status(StatusCode.OK))
+                return todo_dto
             except Exception as e:
+                span.set_status(Status(StatusCode.ERROR, str(e)))
                 logging.error(f'Erro ao criar ToDo: {e}')
                 raise
 
